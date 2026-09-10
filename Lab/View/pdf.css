@@ -1,0 +1,66 @@
+
+table.header{
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  text-align: center;
+}
+
+table.header, .header th, .header td {
+   border: 2px solid black;
+}
+
+p {
+  margin: 0;
+  font-size: 9px;
+  font-style: Italic;
+  font-family: 'Times New Roman', Times, serif;
+  
+}
+.mytable, .mytable th, .mytable td
+{
+  font-size: 12px;
+  border: 1px solid black;
+ border-collapse: collapse;
+ width: 100%;
+}
+
+
+.timeDate, .timeDate th
+{
+  font-size: 12px;
+  font-family: times New Roman;
+}
+
+table.standard {
+  table-layout: fixed;
+  width: 100%;  
+  text-align: center;
+  border-collapse: collapse;
+}
+
+table.standard, .standard th, .standard td {
+  border: 1px solid black;
+}
+
+.standard th {
+  width: 33%;
+}
+td.Report
+{
+  border-bottom: 1px;
+
+}
+.approved-by
+{
+font-size: 10px;
+font-weight:bold
+}
+/* th.right
+{
+ margin-left: 10em;
+} */
+
+
+
+
