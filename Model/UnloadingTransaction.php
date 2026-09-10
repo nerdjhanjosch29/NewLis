@@ -27,6 +27,7 @@ try
     $BeforeImage = "";
     $DateUnload = "";
     $DrNumber = "";
+     $LIMSReferenceCode = "";
     $DateTimeUnload = "";
     $TruckID = 0;
     $SupplierID = 0;
@@ -50,6 +51,10 @@ try
   if($data->DrNumber)
   {
     $DrNumber = $data->DrNumber;
+  }
+    if($data->LIMSReferenceCode)
+  {
+    $LIMSReferenceCode = $data->LIMSReferenceCode;
   }
   if($data->TruckID)
   {
@@ -78,6 +83,7 @@ try
   $sql = "SELECT DrNumber FROM UnloadingTransaction WHERE UnloadingTransactionID = ?";
           $params = array($UnloadingTransactionID);
           $stmt1 = sqlsrv_query($conn, $sql, $params);
+          if($stmt1 === false)throw new Exception('Query 1: Select DRNumber on UnloadingTransaction');
           $OldData = "";
           while($row = sqlsrv_fetch_array($stmt1, SQLSRV_FETCH_ASSOC))
           {
@@ -89,18 +95,18 @@ try
       $newID = 0;
       $WarehouseStockinglastID = 0;
       $sql = "INSERT INTO UnloadingTransaction 
-      (isTransactionID,PurchaseOrderID,ShippingTransactionID,DateTimeUnload,DateUnload,DrNumber,
+      (isTransactionID,PurchaseOrderID,ShippingTransactionID,DateTimeUnload,DateUnload,DrNumber,LIMSReferenceCode,
       TruckID,SupplierID,Status,UserID)
-      VALUES(?,?,?,?,?,?,?,?,?,?) SELECT SCOPE_IDENTITY()";
-      $params = array($isTransactionID,$PurchaseOrderID,$ShippingTransactionID,$DateTimeUnload,$DateUnload,$DrNumber,
+      VALUES(?,?,?,?,?,?,?,?,?,?,?) SELECT SCOPE_IDENTITY()";
+      $params = array($isTransactionID,$PurchaseOrderID,$ShippingTransactionID,$DateTimeUnload,$DateUnload,$DrNumber,$LIMSReferenceCode,
       $TruckID,$SupplierID,$Status,$UserID);
       $stmt = sqlsrv_query($conn, $sql, $params);
-      if($stmt === false) throw new Exception(print_r(sqlsrv_errors(), true));
+             if($stmt === false)throw new Exception('Query 2: INSERT on UnloadingTransaction');
       sqlsrv_next_result($stmt); 
       sqlsrv_fetch($stmt); 
       $newID = sqlsrv_get_field($stmt, 0);
       $RejectedWeight = 0;
-  // var_dump($stmt);   
+ 
       $array = $data->UnloadingDetail;
       $length = count($array);
       for($i = 0; $i<$length; $i++)
@@ -144,14 +150,12 @@ try
             }
             if($UnloadingDetailID == 0)
             {
-
-
               $LastUnloadingDetailID = 0;
               $sqlInsertDetail = "INSERT INTO UnloadingDetail (UnloadingTransactionID,PullOutID,RawMaterialID, WarehouseLocationID, WarehouseID, 
               WarehousePartitionID,Quantity,Weight,deleted)VALUES(?,?,?,?,?,?,?,?,?) SELECT SCOPE_IDENTITY()";
               $paramInsertDetail = array($newID,$PullOutID,$RawMaterialID,$WarehouseLocationID,$WarehouseID,$WarehousePartitionID,$Quantity,$Weight,$deleted);
               $stmt20 = sqlsrv_query($conn, $sqlInsertDetail, $paramInsertDetail);
-              if($stmt20 === false) throw new Exception(print_r(sqlsrv_errors(), true));
+                    if($stmt20 === false)throw new Exception('Query 3: INSERT on Unloading Detail');
               sqlsrv_next_result($stmt20); 
               sqlsrv_fetch($stmt20); 
               $LastUnloadingDetailID = sqlsrv_get_field($stmt20, 0); 
@@ -189,23 +193,24 @@ try
                   $DateUnload
                 );
                 $stmt20 = sqlsrv_query($conn, $sql, $params);
-                if($stmt20 === false) throw new Exception(print_r(sqlsrv_errors(), true));
+                  if($stmt20 === false)throw new Exception('Query 4: INSERT on WarehouseAddStocking');
                   while($row = sqlsrv_fetch_array($stmt20, SQLSRV_FETCH_ASSOC))
                       {
                         $WarehouseStockinglastID = $row['lastID'];
                       }
                       // Warehouse Inventory
                       $sql = "EXEC [dbo].[WarehouseInventories]
-                      @WarehouseID = ?,
+                      @WarehouseID = ?, 
+                      @WarehouseLocationID = ?,
+                      @WarehousePartitionID = ?,
                       @RawMaterialID = ?,
                       @AcceptedWeight = ?,
                       @RejectedWeight = ?,
                       @EndingQuantity = ?,
                       @EndingWeight = ?";
-
-                      $params = array($WarehouseID,$RawMaterialID,$Weight,$RejectedWeight,$Quantity,$Weight);
-                      $stmt = sqlsrv_query($conn, $sql, $params);
-                      if($stmt === false) throw new Exception(print_r(sqlsrv_errors(), true));
+                      $params = array($WarehouseID,$WarehouseLocationID,$WarehousePartitionID,$RawMaterialID,$Weight,$RejectedWeight,$Quantity,$Weight);
+                      $stmt = sqlsrv_query($conn,$sql,$params);
+                     if($stmt === false)throw new Exception('Query 5: INSERT on WarehouseInventories');
             }
       }
     }
@@ -213,26 +218,26 @@ try
               $TransactionDidID = 0;
               $TransactionTypeID = 1;
               $sql = "EXEC [dbo].[TransactionDids]
-              @TransactionDidID = ?,
-              @TransactionTypeID = ?,
-              @MainTransactionID = ?,
-              @TransactionID = ?,
-              @WarehousePartitionStockID = ?,
-              @Quantity = ?,
-              @Weight = ?,
-              @UserID = ?";
+                        @TransactionDidID = ?,
+                        @TransactionTypeID = ?,
+                        @MainTransactionID = ?,
+                        @TransactionID = ?,
+                        @WarehousePartitionStockID = ?,
+                        @Quantity = ?,
+                        @Weight = ?,
+                        @UserID = ?";
               $params = array(
                 $TransactionDidID,
                 $TransactionTypeID,
                 $newID,
-                $newID,
+                $LastUnloadingDetailID,
                 $WarehouseStockinglastID,
                 $Quantity,
                 $Weight,
                 $UserID
               );
               $stmt6 = sqlsrv_query($conn, $sql,$params);
-              if($stmt6 === false) throw new Exception(print_r(sqlsrv_errors(), true));
+               if($stmt6 === false)throw new Exception('Query 6: INSERT on TransactionDids');
     // IMAGE UPLOAD (still part of transaction)
     // if($Status == 1 && isset($_FILES['files']))
     // {
@@ -270,14 +275,12 @@ try
     //     if($stmt === false) throw new Exception(print_r(sqlsrv_errors(), true));
     //   }
     // }
-
     // SYSTEM LOG
     if($UnloadingTransactionID == 0)
     {
       $SystemLogID = 0;
       $FunctionID = 1; 
       $Activity = "Insert Unloading Transaction With a DrNumber : $DrNumber";
-
       $sql = "EXEC [dbo].[SystemLogs]
       @SystemLogID = ?,
       @UserID = ?,
@@ -285,26 +288,22 @@ try
       @TableName = ?,
       @Activity = ?,
       @UpdatedData = ?";
-
       $params = array($SystemLogID,$UserID,$FunctionID,$TableName,$Activity,"0");
-
       $stmt = sqlsrv_query($conn, $sql, $params);
 
-          echo 1;
-
-      if($stmt === false) throw new Exception(print_r(sqlsrv_errors(), true));
+         if($stmt === false)throw new Exception('Query 7: INSERT on SystemLogs');
     }
-
-    sqlsrv_commit($conn);
-
-
+                  if(sqlsrv_commit($conn) === false)
+                    {
+                      throw new Exception(print_r(sqlsrv_errors(),true));
+                    }
+                    echo 1;
   }
 }
 catch(Exception $e)
 {
   sqlsrv_rollback($conn);
   echo json_encode([
-    "success" => false,
     "message" => $e->getMessage()
   ]);
 }
